@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dual Score Counter with Editable Timer</title>
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; /* Changed from 100vh to 100% for better iOS handling */
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      /* prevent vertical scroll by using fixed viewport */
+      overflow: hidden;
+    }
+    /* Root flex container for all content */
+    .app-container {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 8px; /* Reduced padding for mobile */
+      gap: 6px; /* Reduced gap */
+      height: 100%;
+      min-height: 0; /* Allow flex children to shrink */
+      overflow: hidden;
+    }
+
+    /* Timer and scores will be side by side on desktop, stacked horizontally on mobile */
+
+    /* Timer + controls section */
+    .timer-section {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fff;
+      padding: 6px 8px; /* Reduced padding */
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      /* Removed fixed min-height for better responsiveness */
+      min-height: auto;
+    }
+    /* Timer display text */
+    #timer-display {
+      font-size: 4rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: black;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s ease;
+      user-select: none;
+      line-height: 1;
+      min-width: 110px;
+      text-align: center;
+    }
+    /* Inputs row */
+    .timer-inputs {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      flex-wrap: nowrap;
+    }
+    .timer-inputs label {
+      font-weight: 600;
+      font-size: 1.2rem;
+      min-width: 50px;
+      text-align: right;
+      user-select: none;
+    }
+    .timer-inputs input[type=number] {
+      width: 54px;
+      font-size: 1.9rem;
+      font-weight: 700;
+      text-align: center;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      padding: 4px 2px;
+      transition: border-color 0.3s ease;
+      -moz-appearance: textfield;
+    }
+    .timer-inputs input[type=number]:focus {
+      outline: none;
+      border-color: #2196F3;
+      box-shadow: 0 0 5px rgba(33,150,243,0.5);
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    /* Timer control buttons */
+    .timer-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+    .timer-buttons button {
+      flex: 1 1 45%;
+      font-size: 1.5rem;
+      padding: 8px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 3px 7px rgba(33,150,243,0.4);
+      transition: background-color 0.3s ease, transform 0.1s ease;
+      min-width: 90px;
+    }
+    .timer-buttons button:active {
+      transform: scale(0.95);
+    }
+    .timer-buttons button:hover,
+    .timer-buttons button:focus {
+      background-color: #1976d2;
+      outline: none;
+    }
+    .timer-buttons button:disabled {
+      background-color: #90caf9;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Scores section container */
+    .scores-section {
+      flex: 1 1 auto;
+      display: flex;
+      gap: 12px;
+      /* On mobile, stack horizontally with scroll */
+      flex-wrap: nowrap;
+      justify-content: stretch;
+      overflow: hidden;
+      min-height: 0; /* allow flex children to shrink */
+    }
+
+    /* On desktop: side by side, on mobile stack horizontally */
+    /* Individual half box */
+    .half {
+      background: #fff;
+      border: 2px solid #ccc;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      user-select: none;
+      transition: border-color 0.3s ease;
+      min-width: 0;
+      flex: 1 1 45%;
+      max-height: 100%;
+      overflow: hidden;
+    }
+    .half:focus-within {
+      border-color: #2196F3;
+      outline: none;
+    }
+
+    /* Scores */
+    .score {
+      font-size: 5rem;
+      font-weight: 700;
+      user-select: text;
+      margin-bottom: 12px;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    /* Buttons container */
+    .buttons {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: nowrap;
+      width: 100%;
+      max-width: 320px;
+    }
+    button {
+      flex: 1 1 120px;
+      font-size: 1.6rem;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: background-color 0.3s ease, transform 0.1s ease;
+      max-width: 180px;
+      min-width: 100px;
+      white-space: nowrap;
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .increment {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .increment:hover,
+    .increment:focus {
+      background-color: #45a049;
+      outline: none;
+    }
+    .decrement {
+      background-color: #f44336;
+      color: white;
+    }
+    .decrement:hover:not(:disabled),
+    .decrement:focus:not(:disabled) {
+      background-color: #d32f2f;
+      outline: none;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+      background-color: #ccc !important;
+    }
+
+    /* Reset container at bottom */
+    .reset-container {
+      flex: 0 0 auto;
+      background: #fff;
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+      padding: 16px 12px;
+      display: flex;
+      justify-content: center;
+      user-select: none;
+    }
+    .reset-btn {
+      font-size: 1.6rem;
+      padding: 12px 48px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 4px 8px rgba(33,150,243,0.4);
+      transition: background-color 0.3s ease;
+      max-width: 240px;
+      width: 100%;
+    }
+    .reset-btn:hover,
+    .reset-btn:focus {
+      background-color: #1976d2;
+      outline: none;
+    }
+
+    /* Responsive for mobiles (iPhone sizes approx 320-414 px width) */
+    @media (max-width: 480px) {
+      .app-container {
+        padding: 6px 8px;
+        gap: 6px;
+      }
+      #timer-display {
+        font-size: 3rem; /* reduced font size */
+        min-width: 80px;
+      }
+      .timer-inputs {
+        gap: 8px;
+      }
+      .timer-inputs label {
+        min-width: 35px; /* reduced width */
+        font-size: 1rem; /* reduced */
+      }
+      .timer-inputs input[type=number] {
+        width: 40px; /* reduced width */
+        font-size: 1.4rem; /* reduced font */
+        padding: 3px 1px;
+      }
+      .timer-buttons button {
+        font-size: 1.3rem;
+        padding: 6px 8px;
+        min-width: 80px;
+      }
+      .scores-section {
+        flex-direction: row; /* maintain horizontal on mobile */
+        /* enable horizontal scroll if needed */
+        gap: 4px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        min-height: 0;
+      }
+      .half {
+        flex-basis: 50%;
+        padding: 12px 10px;
+        min-height: auto; /* allow shrink */
+        max-height: 100%;
+        box-sizing: border-box;
+      }
+      .score {
+        font-size: 3.5rem; /* smaller font */
+        margin-bottom: 8px;
+        min-width: 50px;
+      }
+      .buttons {
+        gap: 6px;
+        max-width: none;
+      }
+      button {
+        font-size: 1.3rem;
+        flex-basis: 40%;
+        max-width: none;
+        min-width: 80px;
+        padding: 6px 8px;
+      }
+      .reset-container {
+        padding: 8px 6px;
+      }
+      .reset-btn {
+        font-size: 1.4rem;
+        padding: 8px 0;
+        max-width: none;
+        width: 100%;
+      }
+
+      /* Ensure body and html heights remain 100% */
+      body, html {
+        height: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container" role="main">
+
+    <!-- Timer Section -->
+    <section class="timer-section" aria-label="Countdown timer controls">
+      <div id="timer-display" aria-live="polite" aria-atomic="true" role="timer" aria-owns="start-btn pause-btn">
+        02:00
+      </div>
+      <div class="timer-inputs">
+        <label for="minutes-input">Minutes</label>
+        <input id="minutes-input" type="number" min="0" max="10" step="1" value="2" aria-label="Minutes input" />
+        <label for="seconds-input">Seconds</label>
+        <input id="seconds-input" type="number" min="0" max="59" step="1" value="0" aria-label="Seconds input" />
+      </div>
+      <div class="timer-buttons">
+        <button id="start-btn" aria-controls="timer-display" aria-label="Start timer">Start</button>
+        <button id="pause-btn" aria-controls="timer-display" aria-label="Pause timer" disabled>Pause</button>
+      </div>
+    </section>
+
+    <!-- Scores Section -->
+    <section class="scores-section" aria-label="Dual score counters">
+
+      <!-- Left half -->
+      <div class="half" id="left-half" tabindex="0" aria-label="Left score counter" role="region">
+        <div class="score" id="score-left" aria-live="polite" aria-atomic="true">0</div>
+        <div class="buttons">
+          <button class="increment" aria-label="Increment left score">+1</button>
+          <button class="decrement" aria-label="Decrement left score" disabled>-1</button>
+        </div>
+      </div>
+
+      <!-- Right half -->
+      <div class="half" id="right-half" tabindex="0" aria-label="Right score counter" role="region">
+        <div class="score" id="score-right" aria-live="polite" aria-atomic="true">0</div>
+        <div class="buttons">
+          <button class="increment" aria-label="Increment right score">+1</button>
+          <button class="decrement" aria-label="Decrement right score" disabled>-1</button>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- Reset button at bottom center -->
+  <div class="reset-container">
+    <button class="reset-btn" id="reset-btn" aria-label="Reset all scores and timer to default values">Reset</button>
+  </div>
+
+  <script>
+    // Score elements and buttons
+    const scoreLeftEl = document.getElementById('score-left');
+    const leftIncrementBtn = document.querySelector('#left-half .increment');
+    const leftDecrementBtn = document.querySelector('#left-half .decrement');
+
+    const scoreRightEl = document.getElementById('score-right');
+    const rightIncrementBtn = document.querySelector('#right-half .increment');
+    const rightDecrementBtn = document.querySelector('#right-half .decrement');
+
+    // Reset button
+    const resetBtn = document.getElementById('reset-btn');
+
+    // Timer elements and buttons
+    const timerDisplay = document.getElementById('timer-display');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    // Timer input elements
+    const minutesInput = document.getElementById('minutes-input');
+    const secondsInput = document.getElementById('seconds-input');
+
+    // Scores state
+    let scoreLeft = 0;
+    let scoreRight = 0;
+
+    // Timer state
+    const maxMinutes = 10;
+    const maxSeconds = 59;
+    let defaultMinutes = 2;
+    let defaultSeconds = 0;
+    let timeLeft = defaultMinutes * 60 + defaultSeconds;
+    let timerInterval = null;
+    let isRunning = false;
+
+    // Format seconds to MM:SS
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    }
+
+    // Clamp and validate input values for minutes and seconds
+    function clampInputs() {
+      let mins = parseInt(minutesInput.value, 10);
+      let secs = parseInt(secondsInput.value, 10);
+
+      if (isNaN(mins) || mins < 0) mins = 0;
+      else if (mins > maxMinutes) mins = maxMinutes;
+
+      if (isNaN(secs) || secs < 0) secs = 0;
+      else if (secs > maxSeconds) secs = maxSeconds;
+
+      if (mins === maxMinutes && secs > 0) {
+        secs = 0;
+      }
+
+      minutesInput.value = mins;
+      secondsInput.value = secs;
+
+      return { mins, secs };
+    }
+
+    // Update timer display and controls
+    function updateTimerUI() {
+      timerDisplay.textContent = formatTime(timeLeft);
+
+      if (timeLeft <= 20 && timeLeft > 0) {
+        timerDisplay.style.color = '#f44336'; // red
+      } else {
+        timerDisplay.style.color = 'black';
+      }
+
+      startBtn.disabled = isRunning || timeLeft === 0;
+      pauseBtn.disabled = !isRunning;
+      minutesInput.disabled = isRunning;
+      secondsInput.disabled = isRunning;
+    }
+
+    // Handle input changes when timer stopped
+    function onTimerInputChange() {
+      if (isRunning) return;
+      const { mins, secs } = clampInputs();
+      timeLeft = mins * 60 + secs;
+      updateTimerUI();
+    }
+
+    // Timer functions
+    function startTimer() {
+      if (isRunning || timeLeft === 0) return;
+      isRunning = true;
+      updateTimerUI();
+      timerInterval = setInterval(() => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          updateTimerUI();
+        }
+        if (timeLeft === 0) {
+          clearInterval(timerInterval);
+          isRunning = false;
+          updateTimerUI();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (!isRunning) return;
+      clearInterval(timerInterval);
+      isRunning = false;
+      updateTimerUI();
+    }
+
+    // Reset everything
+    function resetAll() {
+      scoreLeft = 0;
+      scoreRight = 0;
+      updateScores();
+
+      defaultMinutes = 2;
+      defaultSeconds = 0;
+      minutesInput.value = defaultMinutes;
+      secondsInput.value = defaultSeconds;
+      timeLeft = defaultMinutes * 60 + defaultSeconds;
+
+      clearInterval(timerInterval);
+      isRunning = false;
+      minutesInput.disabled = false;
+      secondsInput.disabled = false;
+
+      updateTimerUI();
+    }
+
+    // Score updates
+    function updateScores() {
+      scoreLeftEl.textContent = scoreLeft;
+      scoreRightEl.textContent = scoreRight;
+
+      leftDecrementBtn.disabled = scoreLeft <= 0;
+      rightDecrementBtn.disabled = scoreRight <= 0;
+    }
+
+    // Event listeners
+    leftIncrementBtn.addEventListener('click', () => {
+      scoreLeft++;
+      updateScores();
+    });
+    leftDecrementBtn.addEventListener('click', () => {
+      if (scoreLeft > 0) {
+        scoreLeft--;
+        updateScores();
+      }
+    });
+    rightIncrementBtn.addEventListener('click', () => {
+      scoreRight++;
+      updateScores();
+    });
+    rightDecrementBtn.addEventListener('click', () => {
+      if (scoreRight > 0) {
+        scoreRight--;
+        updateScores();
+      }
+    });
+
+    startBtn.addEventListener('click', startTimer);
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetAll);
+
+    minutesInput.addEventListener('input', onTimerInputChange);
+    secondsInput.addEventListener('input', onTimerInputChange);
+
+    // Initialize
+    updateScores();
+    updateTimerUI();
+  </script>
+</body>
+</html>
