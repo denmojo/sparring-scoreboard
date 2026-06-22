@@ -160,7 +160,7 @@
       justify-content: center;
       padding: 24px 16px;
       user-select: none;
-      transition: border-color 0.3s ease;
+      transition: background-color 0.4s ease, border-color 0.3s ease;
       min-width: 0;
       flex: 1 1 45%;
       max-height: 100%;
@@ -169,6 +169,11 @@
     .half:focus-within {
       border-color: #2196F3;
       outline: none;
+    }
+    /* Winner highlight: applied when the timer reaches zero */
+    .half.winner {
+      background: #c8f0c8; /* pleasant light green */
+      border-color: #4CAF50;
     }
 
     /* Scores */
@@ -401,6 +406,10 @@
     const rightIncrementBtn = document.querySelector('#right-half .increment');
     const rightDecrementBtn = document.querySelector('#right-half .decrement');
 
+    // Half (section) elements for winner highlighting
+    const leftHalfEl = document.getElementById('left-half');
+    const rightHalfEl = document.getElementById('right-half');
+
     // Reset button
     const resetBtn = document.getElementById('reset-btn');
 
@@ -481,6 +490,7 @@
     // Timer functions
     function startTimer() {
       if (isRunning || timeLeft === 0) return;
+      clearWinner();
       isRunning = true;
       updateTimerUI();
       timerInterval = setInterval(() => {
@@ -492,6 +502,7 @@
           clearInterval(timerInterval);
           isRunning = false;
           updateTimerUI();
+          highlightWinner();
         }
       }, 1000);
     }
@@ -520,7 +531,24 @@
       minutesInput.disabled = false;
       secondsInput.disabled = false;
 
+      clearWinner();
       updateTimerUI();
+    }
+
+    // Highlight the winning half when the round ends; a tie highlights neither.
+    function highlightWinner() {
+      clearWinner();
+      if (scoreLeft > scoreRight) {
+        leftHalfEl.classList.add('winner');
+      } else if (scoreRight > scoreLeft) {
+        rightHalfEl.classList.add('winner');
+      }
+    }
+
+    // Remove any winner highlight (new round / reset).
+    function clearWinner() {
+      leftHalfEl.classList.remove('winner');
+      rightHalfEl.classList.remove('winner');
     }
 
     // Score updates
